@@ -69,10 +69,23 @@ def draw_pieces(screen, board):
 
 def display_message(screen, message, color=FONT_COLOR_RED):
     """Display a centered message on the screen."""
-    font = pygame.font.Font(None, 36)
+    font = pygame.font.Font(None, 50)
     text_surface = font.render(message, True, color)
-    text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    text_rect = text_surface.get_rect(
+        center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50)
+    )
     screen.blit(text_surface, text_rect)
+
+
+def draw_button(screen, message, x, y, width, height, font_color, button_color):
+    """Draw a button with text on the screen."""
+    font = pygame.font.Font(None, 36)
+    button_rect = pygame.Rect(x, y, width, height)
+    pygame.draw.rect(screen, button_color, button_rect, border_radius=10)
+    text_surface = font.render(message, True, font_color)
+    text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
+    screen.blit(text_surface, text_rect)
+    return button_rect
 
 
 def welcome_screen(screen):
@@ -89,29 +102,8 @@ def welcome_screen(screen):
     screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 100))
 
     # Buttons
-    white_button = pygame.Rect(150, 200, 300, 50)
-    black_button = pygame.Rect(150, 300, 300, 50)
-
-    pygame.draw.rect(screen, (200, 200, 200), white_button, border_radius=15)  # Rounded
-    pygame.draw.rect(screen, (200, 200, 200), black_button, border_radius=15)
-
-    font = pygame.font.Font(None, 30)
-    white_text = font.render("Play as White", True, GREY)
-    black_text = font.render("Play as Black", True, GREY)
-    screen.blit(
-        white_text,
-        (
-            white_button.centerx - white_text.get_width() // 2,
-            white_button.centery - white_text.get_height() // 2,
-        ),
-    )
-    screen.blit(
-        black_text,
-        (
-            black_button.centerx - black_text.get_width() // 2,
-            black_button.centery - black_text.get_height() // 2,
-        ),
-    )
+    white_button = draw_button(screen, "Play as White", 150, 200, 300, 50, GREY, WHITE)
+    black_button = draw_button(screen, "Play as Black", 150, 300, 300, 50, GREY, WHITE)
 
     pygame.display.flip()
 
@@ -142,15 +134,28 @@ def main():
     selected_square = None
     possible_moves = []
     ai_thinking = False
+    game_over = False
+    winner_message = ""
 
     def ai_thread():
         """Run the AI in a separate thread."""
-        nonlocal ai_thinking
+        nonlocal ai_thinking, game_over, winner_message
         ai_thinking = True
         ai_move = get_best_move_time_limited(board, max_time=2.0)
         if ai_move:
             board.push(ai_move)
         ai_thinking = False
+
+        # Check for game over
+        if board.is_game_over():
+            game_over = True
+            result = board.result()
+            if result == "1-0":
+                winner_message = "White Wins!"
+            elif result == "0-1":
+                winner_message = "Black Wins!"
+            else:
+                winner_message = "Draw!"
 
     running = True
     while running:
@@ -159,44 +164,67 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            if (
-                event.type == pygame.MOUSEBUTTONDOWN
-                and not ai_thinking
-                and board.turn == user_plays_white
-            ):
-                x, y = pygame.mouse.get_pos()
-                col, row = x // TILE_SIZE, 7 - (y // TILE_SIZE)
-                square = chess.square(col, row)
-
-                if selected_square is None:
-                    selected_square = square
-                    possible_moves = [
-                        move.to_square
-                        for move in board.legal_moves
-                        if move.from_square == square
-                    ]
-                else:
-                    move = next(
-                        (
-                            m
-                            for m in board.legal_moves
-                            if m.from_square == selected_square
-                            and m.to_square == square
-                        ),
-                        None,
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if game_over:
+                    # Restart button
+                    restart_button = draw_button(
+                        screen, "Restart", 200, 400, 200, 50, GREY, WHITE
                     )
-                    if move:
-                        board.push(move)
-                        threading.Thread(target=ai_thread).start()
+                    if restart_button.collidepoint(event.pos):
+                        main()  # Restart the game
+                        return
+                elif not ai_thinking and board.turn == user_plays_white:
+                    x, y = pygame.mouse.get_pos()
+                    col, row = x // TILE_SIZE, 7 - (y // TILE_SIZE)
+                    square = chess.square(col, row)
 
-                    selected_square = None
-                    possible_moves = []
+                    if selected_square is None:
+                        selected_square = square
+                        possible_moves = [
+                            move.to_square
+                            for move in board.legal_moves
+                            if move.from_square == square
+                        ]
+                    else:
+                        move = next(
+                            (
+                                m
+                                for m in board.legal_moves
+                                if m.from_square == selected_square
+                                and m.to_square == square
+                            ),
+                            None,
+                        )
+                        if move:
+                            board.push(move)
+
+                            # Check for game over
+                            if board.is_game_over():
+                                game_over = True
+                                result = board.result()
+                                if result == "1-0":
+                                    winner_message = "White Wins!"
+                                elif result == "0-1":
+                                    winner_message = "Black Wins!"
+                                else:
+                                    winner_message = "Draw!"
+                            else:
+                                threading.Thread(target=ai_thread).start()
+
+                        selected_square = None
+                        possible_moves = []
 
         draw_board(screen, selected_square, possible_moves)
         draw_pieces(screen, board)
 
         if ai_thinking:
             display_message(screen, "AI is thinking...", color=FONT_COLOR_RED)
+
+        if game_over:
+            display_message(screen, winner_message, color=FONT_COLOR_RED)
+            restart_button = draw_button(
+                screen, "Restart", 200, 400, 200, 50, GREY, WHITE
+            )
 
         pygame.display.flip()
         clock.tick(60)
