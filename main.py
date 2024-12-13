@@ -11,6 +11,7 @@ GREY = (100, 100, 100)
 HIGHLIGHT_COLOR = (0, 255, 0, 100)
 FONT_COLOR_RED = (255, 0, 0)
 FONT_COLOR_WHITE = (255, 255, 255)
+FONT_COLOR_GREEN = (0, 255, 0)
 
 PIECE_IMAGES = {}
 
@@ -136,6 +137,8 @@ def main():
     ai_thinking = False
     game_over = False
     winner_message = ""
+    user_time_left = 60
+    last_time_update = pygame.time.get_ticks()  # Time tracking for updates
 
     def ai_thread():
         """Run the AI in a separate thread."""
@@ -157,9 +160,32 @@ def main():
             else:
                 winner_message = "Draw!"
 
+    # If the user plays Black, let the AI make the first move
+    if not user_plays_white:
+        threading.Thread(target=ai_thread).start()
+
     running = True
     while running:
         screen.fill(GREY)
+
+        # Update user time dynamically
+        current_time = pygame.time.get_ticks()
+        if board.turn == user_plays_white and not ai_thinking and not game_over:
+            elapsed_time = (current_time - last_time_update) / 1000
+            user_time_left -= elapsed_time
+            last_time_update = current_time
+
+            # Check if user ran out of time
+            if user_time_left <= 0:
+                game_over = True
+                winner_message = "AI Wins! Time ran out."
+
+        else:
+            # Reset user time at the start of their turn
+            if not game_over:
+                user_time_left = 60
+            last_time_update = current_time
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -218,7 +244,14 @@ def main():
         draw_pieces(screen, board)
 
         if ai_thinking:
+            # Display "AI is thinking"
             display_message(screen, "AI is thinking...", color=FONT_COLOR_RED)
+        elif not game_over:
+            # Display user time left on the side
+            font = pygame.font.Font(None, 36)
+            user_time_text = f"Time Left: {max(0, user_time_left):.1f}s"
+            user_time_surface = font.render(user_time_text, True, FONT_COLOR_GREEN)
+            screen.blit(user_time_surface, (SCREEN_WIDTH - 150, 10))  # Top-right corner
 
         if game_over:
             display_message(screen, winner_message, color=FONT_COLOR_RED)
