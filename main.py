@@ -9,7 +9,8 @@ TILE_SIZE = SCREEN_WIDTH // 8
 WHITE = (240, 240, 240)
 GREY = (100, 100, 100)
 HIGHLIGHT_COLOR = (0, 255, 0, 100)
-FONT_COLOR = (255, 255, 255)
+FONT_COLOR_RED = (255, 0, 0)
+FONT_COLOR_WHITE = (255, 255, 255)
 
 PIECE_IMAGES = {}
 
@@ -66,36 +67,50 @@ def draw_pieces(screen, board):
             )
 
 
-def display_message(screen, message):
-    """Display a message on the screen."""
+def display_message(screen, message, color=FONT_COLOR_RED):
+    """Display a centered message on the screen."""
     font = pygame.font.Font(None, 36)
-    text_surface = font.render(message, True, FONT_COLOR)
+    text_surface = font.render(message, True, color)
     text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
     screen.blit(text_surface, text_rect)
 
 
 def welcome_screen(screen):
     """Display welcome screen to choose side."""
-    screen.fill(GREY)
+    screen.fill((50, 50, 50))  # Dark background
     font = pygame.font.Font(None, 50)
 
-    title = font.render("Choose Your Side", True, WHITE)
+    # Gradient rectangle
+    for i in range(SCREEN_HEIGHT):
+        color = (i // 5, i // 5, i // 5)  # Subtle gradient
+        pygame.draw.line(screen, color, (0, i), (SCREEN_WIDTH, i))
+
+    title = font.render("Choose Your Side", True, FONT_COLOR_WHITE)
+    screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 100))
+
+    # Buttons
     white_button = pygame.Rect(150, 200, 300, 50)
     black_button = pygame.Rect(150, 300, 300, 50)
 
-    pygame.draw.rect(screen, WHITE, white_button)
-    pygame.draw.rect(screen, WHITE, black_button)
-
-    screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 100))
+    pygame.draw.rect(screen, (200, 200, 200), white_button, border_radius=15)  # Rounded
+    pygame.draw.rect(screen, (200, 200, 200), black_button, border_radius=15)
 
     font = pygame.font.Font(None, 30)
     white_text = font.render("Play as White", True, GREY)
     black_text = font.render("Play as Black", True, GREY)
     screen.blit(
-        white_text, (white_button.x + 50, white_button.y + (white_button.height // 4))
+        white_text,
+        (
+            white_button.centerx - white_text.get_width() // 2,
+            white_button.centery - white_text.get_height() // 2,
+        ),
     )
     screen.blit(
-        black_text, (black_button.x + 50, black_button.y + (black_button.height // 4))
+        black_text,
+        (
+            black_button.centerx - black_text.get_width() // 2,
+            black_button.centery - black_text.get_height() // 2,
+        ),
     )
 
     pygame.display.flip()
@@ -181,7 +196,7 @@ def main():
         draw_pieces(screen, board)
 
         if ai_thinking:
-            display_message(screen, "AI is thinking...")
+            display_message(screen, "AI is thinking...", color=FONT_COLOR_RED)
 
         pygame.display.flip()
         clock.tick(60)
