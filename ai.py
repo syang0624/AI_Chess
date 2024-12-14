@@ -33,27 +33,40 @@ def minimax_alpha_beta(board, depth, alpha, beta, maximizing_player):
 
 
 def get_best_move_time_limited(board, max_time=2.0):
-    """Get the best move within a given time limit."""
     start_time = time.time()
     best_move = None
     depth = 1
 
-    # Use a copy of the board for AI calculations
+    # Determine if we're maximizing or minimizing based on the current player
+    maximizing_player = board.turn  # True if White to move, False if Black to move
+
     board_copy = board.copy()
 
     while time.time() - start_time < max_time:
-        move = None
         try:
             for move in board_copy.legal_moves:
                 board_copy.push(move)
                 eval = minimax_alpha_beta(
-                    board_copy, depth, float("-inf"), float("inf"), False
+                    board_copy,
+                    depth,
+                    float("-inf"),
+                    float("inf"),
+                    not maximizing_player,
                 )
                 board_copy.pop()
-                if best_move is None or eval > best_move[1]:
+
+                # If it's White's turn, we want to maximize; if Black's turn, we want to minimize
+                if best_move is None:
                     best_move = (move, eval)
+                else:
+                    if maximizing_player and eval > best_move[1]:
+                        best_move = (move, eval)
+                    elif not maximizing_player and eval < best_move[1]:
+                        best_move = (move, eval)
+
         except Exception:
-            break  # Gracefully exit if depth is too high
+            break  # If depth too high or other errors, break out gracefully
+
         depth += 1
 
     return best_move[0] if best_move else None
