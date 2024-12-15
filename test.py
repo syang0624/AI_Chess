@@ -51,5 +51,30 @@ class TestChessAI(unittest.TestCase):
         move = get_best_move_time_limited(board, max_time=1.0)
         self.assertIsNone(move, "No move should be returned in a checkmate position")
 
+    def test_ai_performance_under_time_constraints(self):
+        # Test AI performance under very short time constraints
+        board = chess.Board()
+        move = get_best_move_time_limited(board, max_time=0.1)
+        self.assertIsNotNone(move, "AI should return a move even with very short time constraints")
+        self.assertIn(move, board.legal_moves, "Returned move must be legal even under time pressure")
+
+    def test_ai_move_after_check(self):
+        # Test AI response after a check
+        board = chess.Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPP1/RNBQKBNR w KQkq - 0 1")
+        board.push_san("f3")  # White plays f3
+        board.push_san("e5")  # Black plays e5
+        board.push_san("g4")  # White plays g4
+        board.push_san("Qh4+")  # Black gives check
+        move = get_best_move_time_limited(board, max_time=1.0)
+        self.assertIsNotNone(move, "AI should return a move after a check")
+        self.assertIn(move, board.legal_moves, "Returned move must be legal after a check")
+
+    def test_ai_handles_stalemate(self):
+        # Test AI response in a stalemate position
+        board = chess.Board("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1")  # Black is in stalemate
+        self.assertTrue(board.is_stalemate(), "The position should be a stalemate")
+        move = get_best_move_time_limited(board, max_time=1.0)
+        self.assertIsNone(move, "AI should not return a move in a stalemate position")
+
 if __name__ == "__main__":
     unittest.main()
